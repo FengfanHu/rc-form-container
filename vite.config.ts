@@ -1,3 +1,4 @@
+import path from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 
@@ -12,7 +13,7 @@ export default defineConfig({
       fileName: (format) => `rc-form-container.${format}.js`, // 输出文件名
       formats: ["es", "cjs", "umd"], // 输出格式
     },
-    outDir: "lib",
+    outDir: path.resolve(__dirname, "./lib"),
     rollupOptions: {
       input: "src/index.ts",
     },
