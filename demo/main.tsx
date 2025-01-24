@@ -7,7 +7,7 @@ const Module = createForm()(({ form, code }) => {
 
   return <>
     {
-      Array.from((new Array(100)), (_, index) => index)?.map((i) => {
+      Array.from((new Array(20)), (_, index) => index)?.map((i) => {
         return (form as any)?.getFieldDecorator(`${code}_field_${i}`, {})(<input />)
       })
     }
@@ -17,14 +17,20 @@ const Module = createForm()(({ form, code }) => {
 const Demo = () => {
   const form = FormContainer.useForm();
 
-  return <FormContainer form={form} >
-    <h1>Form A</h1>
-    <Module code="formA" />
-    <h1>Form B</h1>
-    <Module code="formB" />
-    <h1>Form C</h1>
-    <Module code="formC" />
-  </FormContainer>
+  return <div>
+    <button onClick={() => {
+      window._form = form;
+      console.log(form?.getFieldsValue())
+    }}>Print values</button>
+    <FormContainer form={form} >
+      <h1>Form A</h1>
+      <Module code="formA" />
+      <h1>Form B</h1>
+      <Module code="formB" />
+      <h1>Form C</h1>
+      <Module code="formC" />
+    </FormContainer>
+  </div>
 };
 
 createRoot(document.getElementById('root')!).render(<Demo />)

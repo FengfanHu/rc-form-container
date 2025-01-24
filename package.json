@@ -1,5 +1,6 @@
 {
   "name": "rc-form-container",
+  "description": "A container component for rc-form, it divides big form into chunks and organizes them to improve the form performance.",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,10 +11,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "@eslint/js": "^9.17.0",
     "@types/node": "^22.10.9",
     "@types/react": "^18.3.18",
@@ -31,6 +32,8 @@
     "vite": "^6.0.5"
   },
   "peerDependencies": {
+    "react": "*",
+    "react-dom": "*",
     "dom-scroll-into-view": "^2.0.1"
   }
 }

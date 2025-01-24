@@ -158,21 +158,20 @@ interface FormInstance extends WrappedFormUtils, ReactElement {
 }
 
 class FormStore {
-  constructor(props: any) {
-    const { autoUpdate = false } = props;
+  constructor(autoUpdate: boolean = true) {
     this.autoUpdate = autoUpdate;
     this.moduleRefs = new Map();
     this.fieldModuleMap = new Map();
   }
 
   private readonly autoUpdate: boolean;
-  public readonly moduleRefs: Map<string, FormInstance>;
+  private readonly moduleRefs: Map<string, FormInstance>;
   private fieldModuleMap: Map<string, any>;
 
-  // CallbackRef 回调函数
-  public handleCallbackRef = (child: ReactElement) => {
+  // CallbackRef for form component
+  private handleCallbackRef = (child: ReactElement) => {
     const code = child?.props?.code;
-    if (!code) throw new Error(`子组件 ${(child?.type as any)?.displayName || '未知组件'} 缺少code属性`);
+    if (!code) throw new Error(`Component ${(child?.type as any)?.displayName || 'Unknown'} must set 'code' property.`);
 
     return (component: FormInstance) => {
       if (!component) {
@@ -180,14 +179,14 @@ class FormStore {
         this.clearFieldModuleMap(code);
         return;
       }
-      if (this.moduleRefs.has(code)) throw new Error(`模块编码 ${code} 重复`);
+      if (this.moduleRefs.has(code)) throw new Error(`Duplicate form code: ${code}.`);
       this.moduleRefs.set(code, component);
       this.initializeModuleFields(code);
     };
   };
 
-  // 覆盖 rc-form 中的方法
-  public overwriteFormAPI = (instance: ReactElement) => {
+  // Overwrite the form API in each form component, the origin API is take over
+  private overwriteFormAPI = (instance: ReactElement) => {
     if (instance?.props?.form) {
       instance.props.form.getFieldsValue = this.getFieldsValue;
       instance.props.form.getFieldValue = this.getFieldValue;
@@ -198,7 +197,7 @@ class FormStore {
     }
   };
 
-  // 清空模块对应的字段映射
+  // Clear up field module map
   private clearFieldModuleMap = (moduleDefineCode: string) => {
     for (const [k, v] of this.fieldModuleMap.entries()) {
       if (v === moduleDefineCode) {
@@ -207,35 +206,35 @@ class FormStore {
     }
   };
 
-  // 初始化字段模块映射
+  // Initialize module fields map
   private initializeModuleFields = (moduleDefineCode: string) => {
     const moduleRef = this.moduleRefs.get(moduleDefineCode);
     const fieldsMeta = moduleRef?.fieldsStore?.fieldsMeta || {};
 
     Object.keys(fieldsMeta).forEach(fieldName => {
-      if (this.fieldModuleMap.has(fieldName))
+      if (this.isFieldRegistered(fieldName))
         throw new Error(
-          `字段 ${fieldName} 存在冲突: 存在该字段的模块为 ${this.fieldModuleMap.get(
+          `Field ${fieldName} already exists in module ${this.fieldModuleMap.get(
             fieldName,
-          )} 和 ${moduleDefineCode}`,
+          )} with code ${moduleDefineCode}`,
         );
       this.fieldModuleMap.set(fieldName, moduleRef?.props?.code);
     });
   };
 
   /**
-   * 更新字段模块映射（无字段更新则非必要）
+   * Update module fields, if there is no fields change it's no need to update
    */
-  public updateModuleFields = () => {
+  private updateModuleFields = () => {
     const newFieldModuleMap = new Map();
     for (const [moduleDefineCode, moduleRef] of this.moduleRefs.entries()) {
       const fieldsMeta = moduleRef?.fieldsStore?.fieldsMeta || {};
       Object.keys(fieldsMeta).forEach(fieldName => {
         if (newFieldModuleMap.has(fieldName))
           throw new Error(
-            `字段 ${fieldName} 存在冲突: 存在该字段的模块为 ${newFieldModuleMap.get(
+            `Field ${fieldName} already exists in module ${this.fieldModuleMap.get(
               fieldName,
-            )} 和 ${moduleDefineCode}`,
+            )} with code ${moduleDefineCode}`,
           );
         newFieldModuleMap.set(fieldName, moduleRef?.props?.code);
       });
@@ -243,14 +242,12 @@ class FormStore {
     this.fieldModuleMap = newFieldModuleMap;
   };
 
-  // 获取字段关于模块的聚合
   private getFieldsUnion = (fieldNames: string[]): Map<string, string[]> => {
     const fieldsUnion = new Map();
 
     fieldNames.forEach(fieldName => {
-      // 字段不存在跳出当前循环
-      if (!this.fieldModuleMap.has(fieldName)) {
-        console.error(`FormContainer-getFieldsUnion: 字段名称${fieldName}不存在`);
+      if (!this.isFieldRegistered(fieldName)) {
+        console.error(`FormContainer-getFieldsUnion: ${fieldName} doesn't exist.`);
         return; 
       }
       const moduleName: string = this.fieldModuleMap.get(fieldName);
@@ -264,30 +261,25 @@ class FormStore {
     return fieldsUnion;
   };
 
-  // 操作前检查是否需要自动更新
-  private checkAutoUpdateInAction = () => {
-    if (!this.autoUpdate) return;
-    this.updateModuleFields();
+  // Auto update helper function to ensure fields are always fresh.
+  private updateBeforeAction = (fn: Function): Function => {
+    if (this.autoUpdate) this.updateModuleFields();
+    return fn;
   }
 
   /**
-   * 以下方法将覆盖 rc-form 中的对应方法
-   *
-   * getFieldsValue
-   * getFieldValue
-   * setFieldsValue
-   * validateFields
-   * validateFieldsAndScroll
-   * resetFields
+   * Check whether field exists in the form
+   * @param {string} fieldName
    */
-
+  private isFieldRegistered = (fieldName: string): boolean => {
+    return this.fieldModuleMap.has(fieldName);
+  }
 
   /**
-   * 获取字段值
-   * @param  fieldNames 需要获取的字段名称
+   * getFieldsValue
+   * @param {string[]} fieldNames
    */
-  getFieldsValue = (fieldNames?: string[]): Record<string, any> => {
-    this.checkAutoUpdateInAction();
+  private getFieldsValue = this.updateBeforeAction((fieldNames?: string[]): Record<string, any> => {
     if (!fieldNames || fieldNames?.length === 0) {
       return (
         Array.from(this.moduleRefs.values()).reduce(
@@ -300,27 +292,26 @@ class FormStore {
       acc[fieldName] = this.getFieldValue(fieldName);
       return acc;
     }, {});
-  };
+  });
 
   /**
-   * 获取字段值
-   * @param fieldName 字段名称
+   * getFieldValue
+   * @param {string} fieldName
    */
-  getFieldValue = (fieldName: string): any => {
-    this.checkAutoUpdateInAction();
-    if (!this.fieldModuleMap.has(fieldName))
-      console.warn(`FormContainer-getFieldValue: 字段名称${fieldName}不存在`);
+  private getFieldValue = this.updateBeforeAction((fieldName: string): any => {
+    if (!this.isFieldRegistered(fieldName)) {
+      console.warn(`FormContainer-getFieldValue: ${fieldName} doesn't exist.`);
+    }
     const moduleName = this.fieldModuleMap.get(fieldName);
     return this.moduleRefs.get(moduleName)?.getFieldValue(fieldName);
-  };
+  });
 
   /**
-   * 设置字段值
-   * @param fieldsValue 字段键值对
-   * @param callback 回调函数
+   * setFieldsValue
+   * @param {Record<string, any>} fieldsValue
+   * @param {Function} callback
    */
-  setFieldsValue = (fieldsValue: { [key: string]: any }, callback: () => void): void => {
-    this.checkAutoUpdateInAction();
+  private setFieldsValue = this.updateBeforeAction((fieldsValue: { [key: string]: any }, callback: () => void): void => {
     const fieldsUnion = this.getFieldsUnion(Object.keys(fieldsValue));
 
     for (const [moduleName, fieldNames] of fieldsUnion.entries()) {
@@ -333,13 +324,13 @@ class FormStore {
         callback,
       );
     }
-  };
+  });
 
   /**
-   * 重置字段
-   * @param fieldNames 需要重置的字段名称
+   * resetFields
+   * @param {string[]} fieldNames
    */
-  resetFields = (fieldNames: string[]) => {
+  private resetFields = (fieldNames: string[]) => {
     if (!fieldNames || fieldNames?.length === 0) {
       Array.from(this.moduleRefs.values()).forEach(moduleRef => {
         moduleRef.resetFields();
@@ -352,35 +343,34 @@ class FormStore {
       const moduleRef = this.moduleRefs.get(moduleName);
       moduleRef?.resetFields(fieldNames);
     }
-    this.checkAutoUpdateInAction();
+    this.updateModuleFields();
   };
 
   /**
-   * 重新渲染表单模块
-   * @param moduleNames 需要重新渲染的模块名称
+   * reRenderModules
+   * @param {string[]} moduleNames
    */
-  reRenderModules = (moduleNames: string[]|string) => {
+  private reRenderModules = (moduleNames: string[]|string) => {
     if (moduleNames && !Array.isArray(moduleNames)) {
       const instance = this.moduleRefs.get(moduleNames);
-      if (!instance) throw new Error(`模块 ${moduleNames} 不存在`);
-      instance?.forceUpdate?.(this.checkAutoUpdateInAction);
+      if (!instance) throw new Error(`Module ${moduleNames} doesn't exist.`);
+      instance?.forceUpdate?.(this.updateModuleFields);
     } else {
       if (moduleNames?.length === 0) moduleNames = Array.from(this.moduleRefs.keys());
       (moduleNames as string[]).forEach(moduleName => {
-        if (!this.moduleRefs.has(moduleName)) throw new Error(`模块 ${moduleName} 不存在`);
-        this.moduleRefs.get(moduleName)?.forceUpdate(this.checkAutoUpdateInAction);
+        if (!this.moduleRefs.has(moduleName)) throw new Error(`Module ${moduleName} doesn't exist.`);
+        this.moduleRefs.get(moduleName)?.forceUpdate(this.updateModuleFields);
       });
     }
   };
 
   /**
-   * 字段校验
-   * @param ns 需要校验的字段名称
-   * @param opt 校验配置项
-   * @param cb 回调函数
+   * Validate fields
+   * @param {string[]} ns field names
+   * @param {object} opt options
+   * @param {Function} cb callback function
    */
-  validateFields = async (ns?: string[], opt?: { [key: string]: any }, cb?: (errors: any, values: any) => void) => {
-    this.checkAutoUpdateInAction();
+  private validateFields = this.updateBeforeAction(async (ns?: string[], opt?: { [key: string]: any }, cb?: (errors: any, values: any) => void) => {
     let errors = {};
     let values = {};
     const validateList: any[] = [];
@@ -398,15 +388,15 @@ class FormStore {
     }
 
     callback?.(Object.keys(errors)?.length === 0 ? null : errors, values);
-  };
+  });
 
   /**
-   * 字段校验并滚动定位
-   * @param ns 需要校验的字段名称
-   * @param opt 校验配置项
-   * @param cb 回调函数
+   * Validate fields and scroll to the first field that has an error.
+   * @param {string[]} ns field names
+   * @param {object} opt options
+   * @param {Function} cb callback function
    */
-  validateFieldsAndScroll = async (ns?: string[], opt?: { [key: string]: any }, cb?: (errors: any, values: any) => void) => {
+  private validateFieldsAndScroll = async (ns?: string[], opt?: { [key: string]: any }, cb?: (errors: any, values: any) => void) => {
     const { names, callback, options } = getParams(ns, opt, cb);
     const newCb = (errors: any, values: any) => {
       if (errors) {
@@ -447,25 +437,23 @@ class FormStore {
   };
 
   /**
-   * 获取字段错误信息
-   * @param fieldName 字段名称
+   * getFieldError
+   * @param {string} fieldName
    */
-  getFieldError = (fieldName: string): string[] | undefined => {
-    this.checkAutoUpdateInAction();
-    if (!this.fieldModuleMap.has(fieldName)) {
-      console.warn(`FormContainer-getFieldError: 字段名称${fieldName}不存在`);
+  private getFieldError = this.updateBeforeAction((fieldName: string): string[] | undefined => {
+    if (!this.isFieldRegistered(fieldName)) {
+      console.warn(`FormContainer-getFieldError: ${fieldName} doesn't exist.`);
       return undefined;
     }
     const moduleName = this.fieldModuleMap.get(fieldName);
     return this.moduleRefs.get(moduleName)?.getFieldError(fieldName);
-  };
+  });
 
   /**
-   * 获取字段错误信息
-   * @param fieldNames 字段名称
+   * getFieldsError
+   * @param {string[]} fieldNames
    */
-  getFieldsError = (fieldNames?: string[]): object[] | undefined => {
-    this.checkAutoUpdateInAction();
+  private getFieldsError = this.updateBeforeAction((fieldNames?: string[]): object[] | undefined => {
     if (!fieldNames || fieldNames?.length === 0) {
       return (
         Array.from(this.moduleRefs.values()).reduce(
@@ -481,30 +469,60 @@ class FormStore {
         const instance = this.moduleRefs.get(moduleName);
         return { ...acc, ...instance?.getFieldsError(fieldNames) }
       }, {}) || {});
-  }
+  })
 
   /**
-   * 清空字段错误信息
-   * @param fieldName 字段名称
+   * clearFieldErrors
+   * @param {string} fieldName
    */
-  clearFieldErrors = (fieldName: string): void => {
-    this.checkAutoUpdateInAction();
-    if (!this.fieldModuleMap.has(fieldName)) {
-      return console.warn(`FormContainer-clearFieldErrors: 字段名称${fieldName}不存在`);
+  private clearFieldErrors = this.updateBeforeAction((fieldName: string): void => {
+    if (!this.isFieldRegistered(fieldName)) {
+      return console.warn(`FormContainer-clearFieldErrors: ${fieldName} doesn't exist.`);
     }
 
     const moduleName = this.fieldModuleMap.get(fieldName);
     const fields = this.moduleRefs.get(moduleName)?.fieldsStore.fields;
     if (fields?.fieldName) fields[fieldName].errors = undefined;
     this.reRenderModules(moduleName);
-  };
+  });
 
   /**
-   * 清空字段错误信息
-   * @param fieldNames 字段名称 
+   * isFieldTouched
+   * @param {string} fieldName 
+   * @returns {boolean}
    */
-  clearFieldsErrors = (fieldNames?: string[]) => {
-    this.checkAutoUpdateInAction();
+  private isFieldTouched = this.updateBeforeAction((fieldName: string): boolean => {
+    if (!this.isFieldRegistered(fieldName)) {
+      console.warn(`FormContainer-isFieldTouched: ${fieldName} doesn't exist.`);
+      return false;
+    }
+
+    const moduleName = this.fieldModuleMap.get(fieldName);
+    const module = this.moduleRefs.get(moduleName);
+    return module ? module?.isFieldTouched(fieldName) : false;
+  })
+
+  /**
+   * isFieldsTouched
+   * @param {string[]} fieldNames
+   * @returns {boolean}
+   */
+  private isFieldsTouched = this.updateBeforeAction((fieldNames?: string[]): boolean => {
+    if (!fieldNames || fieldNames?.length === 0) {
+      return Array.from(this.moduleRefs.values()).some((module => module.isFieldsTouched()));
+    }
+
+    const fieldsUnion = this.getFieldsUnion(fieldNames);
+    return Array.from(fieldsUnion.entries()).some(([moduleName, _fieldNames]) => {
+        return this.moduleRefs.get(moduleName)?.isFieldsTouched(_fieldNames);
+      });
+  })
+
+  /**
+   * clearFieldsErrors
+   * @param {string[]} fieldNames
+   */
+  private clearFieldsErrors = this.updateBeforeAction((fieldNames?: string[]) => {    
     const fieldsUnion = this.getFieldsUnion(fieldNames || Array.from(this.fieldModuleMap.keys()));
 
     for (const [moduleName, fieldNames] of fieldsUnion.entries()) {
@@ -514,29 +532,60 @@ class FormStore {
       });
       this.reRenderModules(moduleName);
     }
+  })
+
+  private getInternalHooks = () => {
+    return {
+      handleCallbackRef: this.handleCallbackRef,
+      overwriteFormAPI: this.overwriteFormAPI,
+      updateModuleFields: this.updateModuleFields
+    };
   }
 
+  public getForm = () => {
+    return {
+      getFieldValue: this.getFieldValue,
+      getFieldsValue: this.getFieldsValue,
+      setFieldsValue: this.setFieldsValue,
+      resetFields: this.resetFields,
+      reRenderModules: this.reRenderModules,
+      validateFields: this.validateFields,
+      validateFieldsAndScroll: this.validateFieldsAndScroll,
+      getFieldError: this.getFieldError,
+      getFieldsError: this.getFieldsError,
+      clearFieldErrors: this.clearFieldErrors,
+      clearFieldsErrors: this.clearFieldsErrors,
+      isFieldTouched: this.isFieldTouched,
+      isFieldsTouched: this.isFieldsTouched,
+      getInternalHooks: this.getInternalHooks,
+    }
+  }
+}
+
+interface InternalFormInstance extends WrappedFormUtils {
+  getInternalHooks: () => {
+    handleCallbackRef: (child: ReactElement) => void;
+    overwriteFormAPI: (instance: ReactElement) => void;
+    updateModuleFields: () => void;
+  }
 }
 
 interface UseFormPropsType {
   form?: any;
-  options?: {
-    autoProxy?: boolean;
-    autoUpdate?: boolean;
-  };
+  autoUpdate?: boolean;
 }
 
-function useForm(configs: UseFormPropsType = {}): FormStore {
+function useForm(configs: UseFormPropsType = {}): InternalFormInstance {
   const form = configs?.form;
-  const options = configs?.options || {};
+  const autoUpdate = configs?.autoUpdate;
   const formRef = React.useRef<any>();
 
   if (!formRef.current) {
     if (form) {
       formRef.current = form;
     } else {
-      const formStore: FormStore = new FormStore(options);
-      formRef.current = formStore;
+      const formStore: FormStore = new FormStore(autoUpdate);
+      formRef.current = formStore?.getForm();
     }
   }
 
