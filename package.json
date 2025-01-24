@@ -9,6 +9,10 @@
   "types": "./lib/index.d.ts",
   "files": ["lib"],
   "homepage": "https://github.com/FengfanHu/rc-form-container",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:FengfanHu/rc-form-container.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
