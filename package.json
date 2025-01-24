@@ -7,6 +7,7 @@
   "main": "./lib/rc-form-container.cjs.js",
   "module": "./lib/rc-form-container.es.js",
   "types": "./lib/index.d.ts",
+  "files": ["lib"],
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
