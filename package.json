@@ -4,6 +4,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "./lib/rc-form-container.cjs.js",
+  "module": "./lib/rc-form-container.es.js",
+  "types": "./lib/index.d.ts",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

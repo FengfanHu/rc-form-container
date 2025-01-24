@@ -16,6 +16,7 @@ export default defineConfig({
     outDir: path.resolve(__dirname, "./lib"),
     rollupOptions: {
       input: "src/index.ts",
+      external: ["react", "react-dom"],
     },
   },
 });
