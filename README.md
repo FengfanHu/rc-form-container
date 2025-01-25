@@ -52,6 +52,14 @@ const Demo = () => {
 };
 ```
 
+When new fields are registered or unregistered in the form, rc-form-container will automatically maintain and update the collection of fields. Typically, you do not need to worry about this. If your form scenario does not involve dynamic registration and unregistration of fields, you can disable the automatic field updates by setting autoUpdate to false, which will improve the performance of the form to some extent.
+
+当表单有新注册或者注销的字段 rc-form-container 会自动维护更新字段的集合。通常您并不需要关心这一点，如果您的表单场景中不存在字段的动态注册和注销，这时候你可以通过设置 `autoUpdate` 位 false 来关闭字段自动更新，这将会提升部分表单性能。
+
+```jsx
+const form = FormContainer.useForm({ autoUpdate: false });
+```
+
 ## API
 
 ### FormContainer(props: FormContainerProps)
@@ -60,7 +68,7 @@ const Demo = () => {
 | ------------------ | --------------------------------------------------- | ------- | ------- | -------- |
 | autoUpdate         | Auto update when fields registered or unregistered. | boolean | True    | False    |
 
-### useForm({ options: { autoProxy: Boolean } })
+### useForm({ options: { autoUpdate: Boolean } })
 
 Form component default create an form instance by Form.useForm. But you can create it and pass to Form also. This allow you to call some function on the form instance. Or you cab get form instance by 'ref'.
 

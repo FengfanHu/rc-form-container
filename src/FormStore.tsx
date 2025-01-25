@@ -263,8 +263,10 @@ class FormStore {
 
   // Auto update helper function to ensure fields are always fresh.
   private updateBeforeAction = (fn: Function): Function => {
-    if (this.autoUpdate) this.updateModuleFields();
-    return fn;
+    return (...args: any) => {
+      if (this.autoUpdate) this.updateModuleFields();
+      return fn(...args);
+    }
   }
 
   /**
