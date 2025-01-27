@@ -1,5 +1,5 @@
 import FormContainerComp from "./FormContainer";
-import useForm from "./FormStore";
+import useForm from "./useForm";
 
 type InternalFormType = typeof FormContainerComp;
 interface FormType extends InternalFormType {

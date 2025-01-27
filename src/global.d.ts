@@ -1,5 +1,5 @@
 declare module "rc-form" {
-  export function createForm(options: any): any;
+  export function createForm(options: FormCreateOption): any;
 }
 
 declare module "dom-scroll-into-view" {
