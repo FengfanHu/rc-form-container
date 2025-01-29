@@ -25,7 +25,9 @@ export default tseslint.config(
       ],
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unsafe-function-type": "warn",
-      "@typescript-eslint/no-extra-non-null-assertion": "warn"
+      "@typescript-eslint/no-extra-non-null-assertion": "warn",
+      "@typescript-eslint/no-non-null-asserted-optional-chain": "off",
+      "no-unsafe-optional-chaining": 'off'
     },
   },
 )

@@ -1,5 +1,3 @@
-import React, { ReactElement, ReactNode } from "react";
-
 export function getParams(ns?: any, opt?: any, cb?: any) {
   let names = ns;
   let options = opt;
@@ -94,69 +92,4 @@ export function getFirstErrorField(errors: any) {
     if (isLeafError(value)) return key;
     return getFirstErrorField(value);
   }
-}
-
-function updateChild({
-  element,
-  updateModuleFields,
-  wrappedComponentRef,
-  cbRef,
-}: {
-  element: ReactElement;
-  updateModuleFields: Function;
-  wrappedComponentRef: any;
-  cbRef: Function;
-}) {
-  const isClassComponent =
-    (element?.type as any)?.WrappedComponent?.prototype instanceof
-    React.Component;
-  const injectedProps = isClassComponent
-    ? {
-        updateModuleFields,
-        wrappedComponentRef,
-        ref: cbRef(element),
-      }
-    : {
-        updateModuleFields,
-        ref: cbRef(element),
-      };
-  return React.cloneElement(element, injectedProps);
-}
-
-export function updateChildren(
-  element: ReactNode,
-  extraProps: any
-): ReactNode | ReactNode[] {
-  if (Array.isArray(element)) {
-    return element.map((child: ReactNode) => updateChildren(child, extraProps));
-  }
-  if (!React.isValidElement(element as ReactElement)) return element;
-
-  const { type, props } = element as ReactElement;
-  const { cbRef, wrappedComponentRef, updateModuleFields } = extraProps;
-  const children = props?.children;
-
-  if ((type as any)?.displayName?.startsWith("Form")) {
-    return updateChild({
-      cbRef,
-      element: element as ReactElement,
-      updateModuleFields,
-      wrappedComponentRef,
-    });
-  }
-
-  if (children) {
-    element = Array.isArray(children)
-      ? React.cloneElement(
-          element as ReactElement,
-          {},
-          children?.map((child) => updateChildren(child, extraProps))
-        )
-      : React.cloneElement(
-          element as ReactElement,
-          {},
-          updateChildren(children, extraProps)
-        );
-  }
-  return element;
 }

@@ -1,41 +1,23 @@
 import React, { FC, ReactNode, useImperativeHandle } from 'react';
-import { updateChildren } from './config';
-import useForm, { FormStore } from './FormStore';
+import useForm from './useForm';
+import FormContext from './FormContext';
+import { InternalFormInstance } from './interface';
 
 interface FormContainerPropsType {
   autoUpdate?: boolean;
   children: ReactNode | ReactNode[];
-  form: FormStore;
+  form: InternalFormInstance;
 }
 
 const FormContainer: FC<FormContainerPropsType> = React.forwardRef((props, ref) => {
-  const { children, form, autoUpdate = true } = props;
-  const formStore = useForm({ form, autoUpdate });
-  const { handleCallbackRef, overwriteFormAPI, updateModuleFields } = formStore.getInternalHooks();
+  const { children, form: _form, autoUpdate = true } = props;
+  const form = useForm({ form: _form, autoUpdate });
 
-  useImperativeHandle(ref, () => formStore);
+  useImperativeHandle(ref, () => form);
 
-  return children
-    ? Array.isArray(children)
-      ? children.map(child =>
-        updateChildren(
-          child,
-          {
-            cbRef: handleCallbackRef,
-            wrappedComponentRef: overwriteFormAPI,
-            updateModuleFields: updateModuleFields,
-          },
-        ),
-      )
-      : updateChildren(
-        children,
-        {
-          cbRef: handleCallbackRef,
-          wrappedComponentRef: overwriteFormAPI,
-          updateModuleFields: updateModuleFields,
-        },
-      )
-    : null;
+  return <FormContext.Provider value={form}>
+    { children }
+  </FormContext.Provider>
 });
 
 export default FormContainer;

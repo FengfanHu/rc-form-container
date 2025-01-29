@@ -20,37 +20,51 @@ open http://localhost:5173/
 
 ## Usage/使用
 
-You must need to use `code` to label each form component to distinguish them.
+Use `FormContainer` to create a form context.
 
-你必须为每个表单组件定义 `code` 属性来区分他们。
+使用 `FormContainer` 组件创建表单容器。
 
 ```jsx
-const Module = createForm()(({ form, code }) => {
-  return <>
+const Demo = () => {
+  const form = FormContainer.useForm();
+
+  return (
+    <FormContainer form={form}>
+      {/* Code your form components or any other components here. */}
+    </FormContainer>
+  );
+};
+```
+
+Use `Module` to wrap the form component, and you need to use `code` to label each form component to distinguish them. Set your form component element for `WrappedElement`.
+
+使用 `Module` 组件来包裹表单组件，你必须为每个表单组件定义 `code` 属性来区分他们。将表单组件的元素作为 `WrappedElement` 参数的值。
+
+```jsx
+const FormComp = ({ code, form }) => {
+  return (<>
     {
       Array.from((new Array(100)), (_, index) => index)?.map((i) => {
         return (form as any)?.getFieldDecorator(`${code}_field_${i}`, {})(<input />)
       })
     }
-  </>
-});
+  </>)
+};
 
 const Demo = () => {
   const form = FormContainer.useForm();
 
-  return <FormContainer form={form} >
-    <button onClick={() => {
-      console.log(form?.getFieldsValue())
-    }}>Console log form values</button>
-    <h1>Form A</h1>
-    <Module code="formA" />
-    <h1>Form B</h1>
-    <Module code="formB" />
-    <h1>Form C</h1>
-    <Module code="formC" />
-  </FormContainer>
+  return (
+    <FormContainer form={form}>
+      <Module code="module_A" WrappedElement={<FormComp {...yourProps} />} />
+    </FormContainer>
+  );
 };
 ```
+
+Use `reRenderModules(moduleNames: string[] = [])` to rerender related modules if in needed.
+
+如果有字段联动的需要，使用 `reRenderModules(moduleNames: string[] = [])` 来重新渲染其他模块，确保关联模块能够获取到最新值。
 
 When new fields are registered or unregistered in the form, rc-form-container will automatically maintain and update the collection of fields. Typically, you do not need to worry about this. If your form scenario does not involve dynamic registration and unregistration of fields, you can disable the automatic field updates by setting autoUpdate to false, which will improve the performance of the form to some extent.
 
@@ -74,13 +88,25 @@ Form component default create an form instance by Form.useForm. But you can crea
 
 获取容器实例，请将返回值传入容器组件或通过 `ref` 对表单进行操作。
 
+### Module(props: ModuleProps)
+
+| ModuleProps    | Description    | Type          | Default | Required |
+| -------------- | -------------- | ------------- | ------- | -------- |
+| code           | Unique label   | String        | -       | True     |
+| WrappedElement | Form component | ComponentType | -       | True     |
+
 ### WrappedFormComponent
 
-| Props | Description  | Type   | Default | Required |
-| ----- | ------------ | ------ | ------- | -------- |
-| code  | Unique label | String | -       | True     |
+The `WrappedFormComponent` will receive two props: `code` and `form`.
 
-## Form Instance API
+`WrappedFormComponent` 会接受两个参数：`code` 和 `form`。
+
+| Props | Description  | Type   |
+| ----- | ------------ | ------ |
+| code  | Unique label | String |
+| form  | Form utils   | Object |
+
+## Form utils
 
 ### getFieldValue(fieldNames: String[]): Record<string, any >
 
