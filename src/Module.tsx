@@ -1,10 +1,10 @@
-import React, { ComponentType, Context, useContext } from "react";
+import React, { Context, ReactElement, useContext } from "react";
 import { createForm } from 'rc-form';
 import FormContext from './FormContext';
 import { FormCreateOption, InternalFormInstance, WrappedFormUtils } from "./interface";
 
 interface ModuleProps {
-  WrappedComponent: ComponentType<any>;
+  WrappedElement: ReactElement;
   code: any;
   form: WrappedFormUtils;
 }
@@ -21,26 +21,31 @@ class Module extends React.Component<ModuleProps> {
   }
 
   render() {
-    const { WrappedComponent, code, form: _form } = this.props;
+    const { WrappedElement, code, form: _form } = this.props;
     const form = this.context as InternalFormInstance;
 
-    return <WrappedComponent code={code} form={{
-      ..._form,
-      ...form, // overwrite original API
-    }} />
+    return React.cloneElement(WrappedElement, {
+      code,
+      form: {
+        ..._form,
+        ...form
+      }
+    })
   }
 }
 
 export default function ModuleHOC(props: { 
   option?: FormCreateOption | undefined;
-  code: any; WrappedComponent: ComponentType<any>; 
+  code: any; WrappedElement: ReactElement
 }) {
-  const { option = {}, code, WrappedComponent } = props;
+  const { option = {}, code, WrappedElement } = props;
   const form = useContext(FormContext);
   const { handleCallbackRef = (() => {}) } = form?.getInternalHooks?.()!;
 
-  if (!code) console.warn('Module must have a unique code.');
-  if (option?.formPropName) console.warn("Module only accept 'formPropName' property to be 'form' ");
+  if (!code) throw Error('Module must have a unique code.');
+  if (option?.formPropName) throw Error("Module only accept 'formPropName' property to be 'form' ");
+  if (!React.isValidElement(WrappedElement)) throw Error(`WrappedElement is not valid React Element.`);
+
   const ModuleComp = createForm({
     ...option,
     formPropName: 'form',
@@ -48,7 +53,7 @@ export default function ModuleHOC(props: {
 
   return React.cloneElement(<ModuleComp />, {
     code,
-    WrappedComponent,
+    WrappedElement,
     ref: handleCallbackRef,
   });
 }
